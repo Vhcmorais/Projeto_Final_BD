@@ -143,6 +143,10 @@ ORDER BY c.data_horario DESC NULLS LAST;
 
 Este projeto me proporcionou uma experiência prática essencial na modelagem, criação e manipulação de bancos de dados relacionais. A simulação de um sistema real de um Hospital Veterinário exigiu atenção a detalhes como integridade referencial, organização de dados e clareza na consulta das informações. Tenho como planejamento e objetivo futuro de implementar uma interface gráfica para esse projeto :)   
 
+<p align="center">
+  <img src="assets/dog.png" width="100" height="100" style="border-radius: 50%;"/>
+</p>
+
 ---
 
 ## 👤 Sobre o Autor
