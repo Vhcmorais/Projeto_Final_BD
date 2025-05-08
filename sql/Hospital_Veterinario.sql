@@ -409,7 +409,7 @@ VALUES (
 -- SELECTS COM JOINS PARA VISUALIZAÇÃO DO BANCO DE DADOS ---------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
 
--- # Select Visualização - Nome do animal, nome do tutor, nome do profissional que atendeu, data e horario de atendimento, observacoes, serviço e 
+-- # Select Visualização (JOIN) - Nome do animal, nome do tutor, nome do profissional que atendeu, data e horario de atendimento, observacoes, serviço e 
 -- quantidade de serviços!
 
 SELECT
@@ -428,7 +428,7 @@ JOIN sistema.consulta_servico cs ON c.id_consulta = cs.id_consulta
 JOIN sistema.servico s ON cs.id_servico = s.id_servico
 ORDER BY c.data_horario DESC NULLS LAST;
 
--- # Select Visualização - Nome do animal, medicamento passado, tipo do medicamento, dosagem, duração do tratamento e o profissional que atendeu!
+-- # Select Visualização (JOIN) - Nome do animal, medicamento passado, tipo do medicamento, dosagem, duração do tratamento e o profissional que atendeu!
 
 SELECT
     a.nome AS nome_animal,
@@ -456,7 +456,7 @@ JOIN sistema.tutores t ON ag.id_tutor = t.id_tutor
 JOIN sistema.funcionarios f ON ag.id_funcionario = f.id_funcionario
 ORDER BY ag.data_hora;
 
--- # Select Visualização - Histórico de atendimento por animais
+-- # Select Visualização (JOIN) - Histórico de atendimento por animais
 
 SELECT
     a.nome AS nome_animal,
@@ -469,7 +469,7 @@ JOIN sistema.animais a ON pm.id_animal = a.id_animal
 JOIN sistema.tutores t ON a.id_tutor = t.id_tutor
 ORDER BY a.nome;
 
--- # Select Visualização - Profissional, função do profissional e o total de atendimentos.
+-- # Select Visualização (JOIN) - Profissional, função do profissional e o total de atendimentos.
 
 SELECT
     f.nome AS profissional,
@@ -499,3 +499,126 @@ select * from sistema.servico;
 select * from sistema.consulta;
 select * from sistema.consulta_servico order by id_consulta;
 select * from sistema.prescricao;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- DESAFIOS APRESENTAÇÃO PROJETO SQL --
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- 1) View com tabela temporária com consulta usando JOIN ---------------------------------------------------------------------------------------------------
+
+SELECT
+    ag.data_hora,
+    t.nome AS tutor,
+    f.nome AS profissional,
+    ag.status
+FROM sistema.agenda ag
+JOIN sistema.tutores t ON ag.id_tutor = t.id_tutor
+JOIN sistema.funcionarios f ON ag.id_funcionario = f.id_funcionario
+ORDER BY ag.data_hora;
+
+-- 2) Trigger atualiza um determinado campo em uma tabela, depois de um update ------------------------------------------------------------------------------
+
+CREATE TABLE sistema.dia_consultas (
+data_hr	VARCHAR		NOT NULL,
+consultas_qt	NUMERIC);
+CREATE TABLE sistema.dia_consulta_controle(
+operacao	CHAR 		NOT NULL,
+usuario	    VARCHAR     NOT NULL,
+dt_hr	    TIMESTAMP	NOT NULL,
+data_hr	    VARCHAR	 	NOT NULL,
+consultas_qt     NUMERIC);
+CREATE OR REPLACE FUNCTION sistema.fn_dia_consulta_controle()
+RETURNS trigger AS
+$$
+	BEGIN
+    	IF(tg_op = 'UPDATE') THEN
+           	INSERT INTO sistema.dia_consulta_controle
+            SELECT 'A', user, now(),NEW.*;
+            RETURN NEW;
+        END IF;
+        RETURN NULL;                   
+    END
+$$
+LANGUAGE plpgsql;
+CREATE TRIGGER tg_controle_diaconsulta
+AFTER INSERT OR UPDATE OR DELETE ON sistema.dia_consultas
+FOR EACH ROW EXECUTE PROCEDURE sistema.fn_dia_consulta_controle();
+
+select * from sistema.dia_consultas;
+
+select * from sistema.dia_consulta_controle;
+
+insert into sistema.dia_consultas(data_hr, consultas_qt)
+values  ('08/05/2025', 5),
+		('15/05/2025', 3),
+		('18/05/2025', 7),
+		('25/05/2025', 3),
+		('31/05/2025', 15);
+		
+update sistema.dia_consultas
+set data_hr = '10/05/2025' where consultas_qt = 5;
+
+update sistema.dia_consultas
+set data_hr = '01/06/25' where consultas_qt = 15;
+
+-- 3) SP QUE INSERE REGISTRO EM TABELA, RETORNA O ID INSERIDO --
+
+CREATE OR REPLACE FUNCTION sistema.fn_return_id(varchar) RETURNS integer AS
+$$
+	DECLARE 
+       t_id sistema.tutores.id_tutor%TYPE;
+    BEGIN
+       SELECT id_tutor INTO t_id FROM sistema.tutores WHERE nome = $1;
+       RETURN t_id;
+    END
+$$
+LANGUAGE plpgsql;
+
+select * from sistema.tutores;
+
+SELECT sistema.fn_return_id('João da Silva');
+SELECT sistema.fn_return_id('Rafa Marques');
+---------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION sistema.fn_return_insertedid(
+    p_nome VARCHAR,
+    p_telefone VARCHAR,
+    p_email VARCHAR,
+    p_endereco VARCHAR
+) RETURNS INTEGER AS
+$$
+DECLARE 
+    t_id sistema.tutores.id_tutor%TYPE;
+BEGIN
+    INSERT INTO sistema.tutores (nome, telefone, email, endereco)
+    VALUES (p_nome, p_telefone, p_email, p_endereco)
+    RETURNING id_tutor INTO t_id;
+
+    RETURN t_id;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+SELECT sistema.fn_return_insertedid(
+    'Rafinha Santos',
+    '(11) 98765-4321',
+    'rafinha@logomail.com',
+    'Rua das Flores, 123'
+);
+
+
+SELECT sistema.fn_return_insertedid(
+    'Luca Braga',
+    '(11)1234-2314',
+    'lucabraga@gmail.com',
+    'Rua das Acacias, 4356'
+);
+
+SELECT sistema.fn_return_insertedid(
+    'Rony',
+    '(11)43414',
+    'rony@gmail.com',
+    'Rua das Acacias, 213'
+);
+----
