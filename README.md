@@ -139,6 +139,121 @@ ORDER BY c.data_horario DESC NULLS LAST;
 
 ---
 
+## 🫵 Desafio 
+
+A apresentação do projeto contou com 3 desafios propostos pelo professor orientador para avaliação do sistema, foram eles: 
+
+1) Inserir uma view de tabela temporária com JOINs;
+2) Inserir triggers para controle da operação UPDATE em qualquer tabela;
+3) Inserir um Stored Procedure que receba uma inserção em uma tabela e retorne o ID do dado inserido.
+
+Cada desafio foi resolvido com os seguintes códigos:
+
+1) Inserir uma view de tabela temporária com JOINs;
+
+```
+SELECT
+    ag.data_hora,
+    t.nome AS tutor,
+    f.nome AS profissional,
+    ag.status
+FROM sistema.agenda ag
+JOIN sistema.tutores t ON ag.id_tutor = t.id_tutor
+JOIN sistema.funcionarios f ON ag.id_funcionario = f.id_funcionario
+ORDER BY ag.data_hora;
+```
+2) Inserir triggers para controle da operação UPDATE em qualquer tabela;
+```
+CREATE TABLE sistema.dia_consultas (
+data_hr	VARCHAR		NOT NULL,
+consultas_qt	NUMERIC);
+CREATE TABLE sistema.dia_consulta_controle(
+operacao	CHAR 		NOT NULL,
+usuario	    VARCHAR     NOT NULL,
+dt_hr	    TIMESTAMP	NOT NULL,
+data_hr	    VARCHAR	 	NOT NULL,
+consultas_qt     NUMERIC);
+CREATE OR REPLACE FUNCTION sistema.fn_dia_consulta_controle()
+RETURNS trigger AS
+$$
+	BEGIN
+    	IF(tg_op = 'UPDATE') THEN
+           	INSERT INTO sistema.dia_consulta_controle
+            SELECT 'A', user, now(),NEW.*;
+            RETURN NEW;
+        END IF;
+        RETURN NULL;                   
+    END
+$$
+LANGUAGE plpgsql;
+CREATE TRIGGER tg_controle_diaconsulta
+AFTER INSERT OR UPDATE OR DELETE ON sistema.dia_consultas
+FOR EACH ROW EXECUTE PROCEDURE sistema.fn_dia_consulta_controle();
+
+select * from sistema.dia_consultas;
+
+select * from sistema.dia_consulta_controle;
+
+insert into sistema.dia_consultas(data_hr, consultas_qt)
+values  ('08/05/2025', 5),
+		('15/05/2025', 3),
+		('18/05/2025', 7),
+		('25/05/2025', 3),
+		('31/05/2025', 15);
+		
+update sistema.dia_consultas
+set data_hr = '10/05/2025' where consultas_qt = 5;
+
+update sistema.dia_consultas
+set data_hr = '01/06/25' where consultas_qt = 15;
+```
+
+3) Inserir um Stored Procedure que receba uma inserção em uma tabela e retorne o ID do dado inserido:
+```
+CREATE OR REPLACE FUNCTION sistema.fn_return_insertedid(
+    p_nome VARCHAR,
+    p_telefone VARCHAR,
+    p_email VARCHAR,
+    p_endereco VARCHAR
+) RETURNS INTEGER AS
+$$
+DECLARE 
+    t_id sistema.tutores.id_tutor%TYPE;
+BEGIN
+    INSERT INTO sistema.tutores (nome, telefone, email, endereco)
+    VALUES (p_nome, p_telefone, p_email, p_endereco)
+    RETURNING id_tutor INTO t_id;
+
+    RETURN t_id;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+SELECT sistema.fn_return_insertedid(
+    'Rafinha Santos',
+    '(11) 98765-4321',
+    'rafinha@logomail.com',
+    'Rua das Flores, 123'
+);
+
+
+SELECT sistema.fn_return_insertedid(
+    'Luca Braga',
+    '(11)1234-2314',
+    'lucabraga@gmail.com',
+    'Rua das Acacias, 4356'
+);
+
+SELECT sistema.fn_return_insertedid(
+    'Rony',
+    '(11)43414',
+    'rony@gmail.com',
+    'Rua das Acacias, 213'
+);
+```
+---
+
 ## 📌 Conclusão
 
 Este projeto me proporcionou uma experiência prática essencial na modelagem, criação e manipulação de bancos de dados relacionais. A simulação de um sistema real de um Hospital Veterinário exigiu atenção a detalhes como integridade referencial, organização de dados e clareza na consulta das informações. Tenho como planejamento e objetivo futuro de implementar uma interface gráfica para esse projeto :)   
